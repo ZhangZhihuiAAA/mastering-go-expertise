@@ -1,4 +1,4 @@
-module mastering-go-expertise/stats
+module mastering-go-expertise/stats_cli
 
 go 1.22.2
 
