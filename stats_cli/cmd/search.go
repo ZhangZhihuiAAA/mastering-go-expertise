@@ -1,6 +1,5 @@
 /*
-Copyright © 2024 NAME HERE <EMAIL ADDRESS>
-
+Copyright © 2024 Zhang Zhihui <ZhangZhihuiAAA@126.com>
 */
 package cmd
 
@@ -10,31 +9,37 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var sid string
+
 // searchCmd represents the search command
 var searchCmd = &cobra.Command{
-	Use:   "search",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("search called")
-	},
+    Use:   "search",
+    Short: "search command",
+    Long:  `A longer description of the search command.`,
+    Run: func(cmd *cobra.Command, args []string) {
+        searchRun()
+    },
 }
 
 func init() {
-	rootCmd.AddCommand(searchCmd)
+    rootCmd.AddCommand(searchCmd)
 
-	// Here you will define your flags and configuration settings.
+    searchCmd.Flags().StringVarP(&sid, "sid", "s", "", "Search key")
+    searchCmd.MarkFlagRequired("sid")
+}
 
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// searchCmd.PersistentFlags().String("foo", "", "A help for foo")
+func searchRun() {
+    for i, k := range data {
+        if k.Filename == sid {
+            str, err := PrettyPrintJSONStream(data[i])
+            if err != nil {
+                fmt.Println(err)
+            } else {
+                fmt.Print(str)
+            }
+            return
+        }
+    }
 
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// searchCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+    fmt.Printf("Key not found: %s\n", sid)
 }

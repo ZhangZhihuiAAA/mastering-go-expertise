@@ -18,7 +18,7 @@ var listCmd = &cobra.Command{
     Short: "list command",
     Long:  `A longer description of the list command`,
     Run: func(cmd *cobra.Command, args []string) {
-        list()
+        listRun()
     },
 }
 
@@ -26,7 +26,7 @@ func init() {
     rootCmd.AddCommand(listCmd)
 }
 
-func list() {
+func listRun() {
     sort.Sort(data)
     text, err := PrettyPrintJSONStream(data)
     if err != nil {
@@ -35,14 +35,14 @@ func list() {
     }
     fmt.Println(text)
 
-    logger.Info(fmt.Sprintf("%d records in total.", len(data)))
+    fmt.Printf("%d records in total.\n", len(data))
 }
 
 // PrettyPrintJSONStream pretty prints the contents of the phone book
 func PrettyPrintJSONStream(data any) (string, error) {
     buffer := new(bytes.Buffer)
     encoder := json.NewEncoder(buffer)
-    encoder.SetIndent("", "\t")
+    encoder.SetIndent("", "  ")
 
     err := encoder.Encode(data)
     if err != nil {

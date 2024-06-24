@@ -1,10 +1,11 @@
 /*
-Copyright © 2024 NAME HERE <EMAIL ADDRESS>
+Copyright © 2024 Zhang Zhihui <ZhangZhihuiAAA@126.com>
 */
 package cmd
 
 import (
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"math"
 	"os"
@@ -20,105 +21,116 @@ var file string
 var insertCmd = &cobra.Command{
     Use:   "insert",
     Short: "insert command",
-    Long: `A longer description of the insert command.`,
+    Long:  `A longer description of the insert command.`,
     Run: func(cmd *cobra.Command, args []string) {
-        if file == "" {
-            logger.Info("Need a file to read!")
-            return
-        }
-
-        _, ok := index[file]
-        if ok {
-            fmt.Println("Found key:", file)
-            delete(index, file)
-
-            // Now, delete it from data
-            for i, k := range data {
-				if k.Filename == file {
-					data = slices.Delete(data, i, i + 1)
-					break
-				}
-			}
-        }
+        insertRun()
     },
 }
 
 func init() {
     rootCmd.AddCommand(insertCmd)
-
-    // Here you will define your flags and configuration settings.
-
-    // Cobra supports Persistent Flags which will work for this command
-    // and all subcommands, e.g.:
-    // insertCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-    // Cobra supports local flags which will only run when this command
-    // is called directly, e.g.:
-    // insertCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+    insertCmd.Flags().StringVarP(&file, "file", "f", "", "Filename to process")
+    insertCmd.MarkFlagRequired("file")
 }
 
-func readFile(filepath string) ([]float64, error) {
-	_, err := os.Stat(filepath)
-	if err != nil {
-		return nil, err
-	}
+func insertRun() {
+    if file == "" {
+        fmt.Println("Need a file to read!")
+        return
+    }
 
-	f, err := os.Open(filepath)
-	if err != nil {
-		return nil ,err
-	}
-	defer f.Close()
+    _, ok := index[file]
+    if ok {
+        fmt.Println("Found key:", file)
+        delete(index, file)
 
-	lines, err := csv.NewReader(f).ReadAll()
-	if err != nil {
-		return nil, err
-	}
+        // Now, delete it from data
+        for i, k := range data {
+            if k.Filename == file {
+                data = slices.Delete(data, i, i+1)
+                break
+            }
+        }
+    }
 
-	values := make([]float64, 0, len(lines))
-	for _, line := range lines {
-		value, err := strconv.ParseFloat(line[0], 64)
-		if err != nil {
-			fmt.Println("Error reading:", line[0], err)
-		}
-		values = append(values, value)
-	}
+    err := ProcessFile(file)
+    if err != nil {
+        fmt.Println(err)
+        return
+    }
 
-	return values, nil
+    err = saveJSONFile(JSONFILE)
+    if err != nil {
+        fmt.Printf("Error saving data: %s", err)
+    }
+}
+
+func readFile(filepath string) (values []float64, err error) {
+    _, err = os.Stat(filepath)
+    if err != nil {
+        return nil, err
+    }
+
+    f, err := os.Open(filepath)
+    if err != nil {
+        return nil, err
+    }
+    defer f.Close()
+
+    lines, err := csv.NewReader(f).ReadAll()
+    if err != nil {
+        return nil, err
+    }
+
+    values = make([]float64, 0, len(lines))
+    for i, line := range lines {
+        value, err4 := strconv.ParseFloat(line[0], 64)
+        if err4 != nil {
+            logger.Error(fmt.Sprintln("Invalid value", line[0], "in line", i, err4))
+
+            if err == nil {
+                err = errors.New("failed to read at least one value")
+            }
+        }
+        values = append(values, value)
+    }
+
+    return
 }
 
 func stdDev(x []float64) (float64, float64) {
-	// Mean value
-	var sum float64
-	for _, val := range x {
-		sum += val
-	}
-	meanValue := sum / float64(len(x))
+    // Mean value
+    var sum float64
+    for _, val := range x {
+        sum += val
+    }
+    meanValue := sum / float64(len(x))
 
-	// Standard deviation
-	var squared float64
-	for i := 0; i < len(x); i++ {
-		squared += math.Pow(x[i] - meanValue, 2)
-	}
-	standardDeviation := math.Sqrt(squared / float64(len(x)))
+    // Standard deviation
+    var squared float64
+    for i := 0; i < len(x); i++ {
+        squared += math.Pow(x[i]-meanValue, 2)
+    }
+    standardDeviation := math.Sqrt(squared / float64(len(x)))
 
-	return meanValue, standardDeviation
+    return meanValue, standardDeviation
 }
 
 func ProcessFile(file string) error {
-	currentFile := Entry{}
-	currentFile.Filename = file
+    currentFile := Entry{}
+    currentFile.Filename = file
 
-	values, err := readFile(file)
-	if err != nil {
-		return nil
-	}
+    values, err := readFile(file)
+    if err != nil {
+        return err
+    }
 
-	currentFile.Len = len(values)
-	currentFile.Minimum = slices.Min(values)
-	currentFile.Maximum = slices.Max(values)
-	currentFile.Mean, currentFile.StdDev = stdDev(values)
+    currentFile.Len = len(values)
+    currentFile.Minimum = slices.Min(values)
+    currentFile.Maximum = slices.Max(values)
+    currentFile.Mean, currentFile.StdDev = stdDev(values)
 
-	data = append(data, currentFile)
+    data = append(data, currentFile)
 
-	return nil
+    return nil
 }

@@ -9,6 +9,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -29,16 +30,42 @@ const JSONFILE = "./data.json"
 
 // Global variables
 var data = DFslice{}
-var disableLogging bool
+var enableLogging bool
 var logger *slog.Logger
 var index map[string]int
 
-func setDefaultLogger() {
-    logger = slog.New(slog.NewJSONHandler(os.Stderr, nil))
-    if !disableLogging {
-        logger = slog.New(slog.NewJSONHandler(io.Discard, nil))
+// rootCmd represents the base command when called without any subcommands
+var rootCmd = &cobra.Command{
+    Use:   "stats",
+    Short: "Statistics application",
+    Long:  `The statistics application`,
+    PersistentPreRun: func(cmd *cobra.Command, args []string) {
+        setDefaultLogger()
+    },
+    Run: func(cmd *cobra.Command, args []string) {},
+}
+
+func init() {
+    rootCmd.PersistentFlags().BoolVarP(&enableLogging, "log", "l", true, "Logging information")
+
+    err := readJSONFile(JSONFILE)
+    if err != nil && strings.Contains(err.Error(), "no such file") {
+        // Create the file if not exist.
+        saveJSONFile(JSONFILE)
+    // io.EOF is fine because it means the file is empty.
+    } else if err != nil && err != io.EOF {
+        fmt.Println(err)
+        return
     }
 
+    createIndex()
+}
+
+func setDefaultLogger() {
+    logger = slog.New(slog.NewTextHandler(os.Stderr, nil))
+    if !enableLogging {
+        logger = slog.New(slog.NewTextHandler(io.Discard, nil))
+    }
     slog.SetDefault(logger)
 }
 
@@ -48,30 +75,6 @@ func createIndex() {
         key := k.Filename
         index[key] = i
     }
-}
-
-// rootCmd represents the base command when called without any subcommands
-var rootCmd = &cobra.Command{
-    Use:   "stats",
-    Short: "Statistics application",
-    Long:  `The statistics application`,
-    // Uncomment the following line if your bare application
-    // has an action associated with it:
-    Run: func(cmd *cobra.Command, args []string) {},
-}
-
-func init() {
-    rootCmd.PersistentFlags().BoolVarP(&disableLogging, "log", "l", false, "Logging information")
-
-    err := readJSONFile(JSONFILE)
-    // io.EOF is fine because it means the file is empty
-    if err != nil && err != io.EOF {
-        fmt.Println(err)
-        return
-    }
-
-    setDefaultLogger()
-    createIndex()
 }
 
 func saveJSONFile(filepath string) error {
