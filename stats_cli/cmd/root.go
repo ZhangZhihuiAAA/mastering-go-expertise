@@ -9,7 +9,6 @@ import (
 	"io"
 	"log/slog"
 	"os"
-	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -49,11 +48,8 @@ func init() {
     rootCmd.PersistentFlags().BoolVarP(&enableLogging, "log", "l", true, "Logging information")
 
     err := readJSONFile(JSONFILE)
-    if err != nil && strings.Contains(err.Error(), "no such file") {
-        // Create the file if not exist.
-        saveJSONFile(JSONFILE)
     // io.EOF is fine because it means the file is empty.
-    } else if err != nil && err != io.EOF {
+    if err != nil && err != io.EOF {
         fmt.Println(err)
         return
     }
@@ -91,6 +87,14 @@ func saveJSONFile(filepath string) error {
 func readJSONFile(filepath string) error {
     _, err := os.Stat(filepath)
     if err != nil {
+        if os.IsNotExist(err) {
+            f, err1 := os.OpenFile(filepath, os.O_RDONLY | os.O_CREATE, 0644)
+            if err1 != nil {
+                return err1
+            }
+            defer f.Close()
+            return nil
+        }
         return err
     }
 
@@ -101,11 +105,7 @@ func readJSONFile(filepath string) error {
     defer f.Close()
 
     err = DeSerialize(&data, f)
-    if err != nil {
-        return err
-    }
-
-    return nil
+    return err
 }
 
 // DeSerialize decodes a serialized slice with JSON records
