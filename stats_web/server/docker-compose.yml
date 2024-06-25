@@ -1,0 +1,13 @@
+services:
+  stats_server:
+    image: stats_server
+    container_name: stats_server
+    restart: always
+    ports:
+      - 1234:1234
+    networks:
+      - stats
+
+networks:
+  stats:
+    driver: bridge
